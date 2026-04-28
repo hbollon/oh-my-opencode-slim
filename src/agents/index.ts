@@ -336,6 +336,14 @@ export function createAgents(config?: PluginConfig): AgentDefinition[] {
 
   const allSubAgents = [...builtInSubAgents, ...customSubAgents];
 
+  // Collect custom orchestrator hints from custom agent overrides.
+  const customOrchestratorPrompts = customSubAgents
+    .map((agent) => {
+      const override = getAgentOverride(config, agent.name);
+      return override?.orchestratorPrompt;
+    })
+    .filter((prompt): prompt is string => Boolean(prompt));
+
   // 3. Create Orchestrator (with its own overrides and custom prompts)
   // DEFAULT_MODELS.orchestrator is undefined; model is resolved via override or
   // left unset so the runtime chat.message hook can pick it from _modelArray.
@@ -348,6 +356,7 @@ export function createAgents(config?: PluginConfig): AgentDefinition[] {
     orchestratorPrompts.prompt,
     orchestratorPrompts.appendPrompt,
     disabled,
+    customOrchestratorPrompts,
   );
   applyDefaultPermissions(orchestrator, orchestratorOverride?.skills);
   if (orchestratorOverride) {
@@ -364,14 +373,6 @@ export function createAgents(config?: PluginConfig): AgentDefinition[] {
       displayNameMap.set(agent.name, agent.displayName);
     }
   }
-
-  // 3b. Append custom orchestrator hints from custom agent overrides.
-  const customOrchestratorPrompts = customSubAgents
-    .map((agent) => {
-      const override = getAgentOverride(config, agent.name);
-      return override?.orchestratorPrompt;
-    })
-    .filter((prompt): prompt is string => Boolean(prompt));
 
   // Validate display names
   const usedDisplayNames = new Set<string>();
@@ -402,23 +403,6 @@ export function createAgents(config?: PluginConfig): AgentDefinition[] {
 
   // Inject display names into orchestrator prompt (complete map)
   injectDisplayNames(orchestrator, displayNameMap);
-
-  if (customOrchestratorPrompts.length > 0) {
-    const rewrittenPrompts = customOrchestratorPrompts.map((promptText) => {
-      let text = promptText;
-      for (const [internalName, displayName] of displayNameMap) {
-        text = text.replace(
-          new RegExp(`@${escapeRegExp(internalName)}\\b`, 'g'),
-          `@${normalizeDisplayName(displayName)}`,
-        );
-      }
-      return text;
-    });
-
-    orchestrator.config.prompt = `${orchestrator.config.prompt}\n\n${rewrittenPrompts.join(
-      '\n\n',
-    )}`;
-  }
 
   return [orchestrator, ...allSubAgents];
 }

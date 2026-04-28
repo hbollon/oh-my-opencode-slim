@@ -48,9 +48,19 @@ describe('custom-agent creation', () => {
     );
 
     const orchestrator = agents.find((agent) => agent.name === 'orchestrator');
-    expect(orchestrator?.config.prompt).toContain(
+    const prompt = orchestrator?.config.prompt ?? '';
+    expect(prompt).toContain(
       '@test-auditor\n- Role: Compliance audit specialist',
     );
+
+    // Custom agent prompts must be inside <Agents> tags
+    const agentsStart = prompt.indexOf('<Agents>');
+    const agentsEnd = prompt.indexOf('</Agents>');
+    const customPromptIndex = prompt.indexOf(
+      '@test-auditor\n- Role: Compliance audit specialist',
+    );
+    expect(customPromptIndex).toBeGreaterThan(agentsStart);
+    expect(customPromptIndex).toBeLessThan(agentsEnd);
   });
 
   test('skips custom agents without a model', () => {
@@ -121,8 +131,17 @@ describe('custom-agent creation', () => {
 
     const agents = createAgents(config);
     const orchestrator = agents.find((agent) => agent.name === 'orchestrator');
-    expect(orchestrator?.config.prompt).toContain(
+
+    const prompt = orchestrator?.config.prompt ?? '';
+    expect(prompt).toContain('@cleanup\n- Role: Cleanup specialist');
+
+    // Custom agent prompts must be inside <Agents> tags
+    const agentsStart = prompt.indexOf('<Agents>');
+    const agentsEnd = prompt.indexOf('</Agents>');
+    const customPromptIndex = prompt.indexOf(
       '@cleanup\n- Role: Cleanup specialist',
     );
+    expect(customPromptIndex).toBeGreaterThan(agentsStart);
+    expect(customPromptIndex).toBeLessThan(agentsEnd);
   });
 });
