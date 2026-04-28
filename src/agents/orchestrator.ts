@@ -114,12 +114,20 @@ const PARALLEL_DELEGATION_EXAMPLES = [
  * @param disabledAgents - Set of disabled agent names to exclude from the prompt
  * @returns The complete orchestrator prompt string
  */
-export function buildOrchestratorPrompt(disabledAgents?: Set<string>): string {
+export function buildOrchestratorPrompt(
+  disabledAgents?: Set<string>,
+  customAgentDescriptions?: string[],
+): string {
   // Filter agent descriptions
   const enabledAgents = Object.entries(AGENT_DESCRIPTIONS)
     .filter(([name]) => !disabledAgents?.has(name))
-    .map(([, desc]) => desc)
-    .join('\n\n');
+    .map(([, desc]) => desc);
+
+  if (customAgentDescriptions) {
+    enabledAgents.push(...customAgentDescriptions);
+  }
+
+  const agentsBlock = enabledAgents.join('\n\n');
 
   // Filter validation routing lines — remove lines mentioning any disabled agent
   const enabledValidationRouting = VALIDATION_ROUTING.filter((line) => {
@@ -143,7 +151,7 @@ You are an AI coding orchestrator that optimizes for quality, speed, cost, and r
 
 <Agents>
 
-${enabledAgents}
+${agentsBlock}
 
 </Agents>
 
@@ -253,8 +261,12 @@ export function createOrchestratorAgent(
   customPrompt?: string,
   customAppendPrompt?: string,
   disabledAgents?: Set<string>,
+  customAgentDescriptions?: string[],
 ): AgentDefinition {
-  const basePrompt = buildOrchestratorPrompt(disabledAgents);
+  const basePrompt = buildOrchestratorPrompt(
+    disabledAgents,
+    customAgentDescriptions,
+  );
   const prompt = resolvePrompt(basePrompt, customPrompt, customAppendPrompt);
 
   const definition: AgentDefinition = {
